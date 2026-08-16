@@ -1,0 +1,113 @@
+INFO:app:Processing image for address: 1600 Amphitheatre Parkway, Mountain View, CA, USA
+INFO:app:File saved: static/uploads/20260810_154551_403390cd.jpeg
+INFO:app:Image file size: 375603 bytes
+INFO:app:Analysis complete for 20260810_154551_403390cd.jpeg, score: 90
+INFO:app:Processing image for address: Google Building 41, 1600, Amphitheatre Parkway, Mountain View, Santa Clara County, California, 94043, United States
+INFO:app:File saved: static/uploads/20260810_154552_1660e3ea.jpeg
+INFO:app:Image file size: 334195 bytes
+INFO:app:Analysis complete for 20260810_154552_1660e3ea.jpeg, score: 100
+INFO:app:Processing image for address: 1600 Amphitheatre Parkway, Mountain View, CA, USA
+INFO:app:File saved: static/uploads/20260810_154554_bc2683aa.jpeg
+INFO:app:Image file size: 440149 bytes
+INFO:app:Analysis complete for 20260810_154554_bc2683aa.jpeg, score: 95
+INFO:app:Processing image for address: 350 5th Avenue, New York, NY, USA
+INFO:app:File saved: static/uploads/20260810_155153_403390cd.jpeg
+INFO:app:Image file size: 375603 bytes
+INFO:app:Analysis complete for 20260810_155153_403390cd.jpeg, score: 95
+INFO:app:Processing image for address: 350 5th Avenue, New York, NY, USA
+INFO:app:File saved: static/uploads/20260810_155153_1660e3ea.jpeg
+INFO:app:Image file size: 334195 bytes
+INFO:app:Analysis complete for 20260810_155153_1660e3ea.jpeg, score: 100
+INFO:app:Processing image for address: 350 5th Avenue, New York, NY, USA
+INFO:app:File saved: static/uploads/20260810_155154_bc2683aa.jpeg
+INFO:app:Image file size: 440149 bytes
+INFO:app:Analysis complete for 20260810_155154_bc2683aa.jpeg, score: 90
+INFO:app:Processing image for address: Redmond, WA, USA
+INFO:app:File saved: static/uploads/20260810_155518_403390cd.jpeg
+INFO:app:Image file size: 375603 bytes
+INFO:app:Analysis complete for 20260810_155518_403390cd.jpeg, score: 90
+INFO:app:Processing image for address: NE One Microsoft Way, Microsoft Redmond East Campus, Overlake, Redmond, King County, Washington, 98008, United States
+INFO:app:File saved: static/uploads/20260810_155518_1660e3ea.jpeg
+INFO:app:Image file size: 334195 bytes
+INFO:app:Analysis complete for 20260810_155518_1660e3ea.jpeg, score: 80
+INFO:app:Processing image for address: Redmond, WA, USA
+INFO:app:File saved: static/uploads/20260810_155519_bc2683aa.jpeg
+INFO:app:Image file size: 440149 bytes
+INFO:app:Analysis complete for 20260810_155519_bc2683aa.jpeg, score: 75
+INFO:app:Processing image for address: Redmond, WA, USA
+INFO:app:File saved: static/uploads/20260810_155809_403390cd.jpeg
+INFO:app:Image file size: 375603 bytes
+INFO:app:Analysis complete for 20260810_155809_403390cd.jpeg, score: 80
+INFO:app:Processing image for address: Redmond, WA, USA
+INFO:app:File saved: static/uploads/20260810_155810_1660e3ea.jpeg
+INFO:app:Image file size: 334195 bytes
+INFO:app:Analysis complete for 20260810_155810_1660e3ea.jpeg, score: 85
+INFO:app:Processing image for address: Redmond, WA, USA
+INFO:app:File saved: static/uploads/20260810_155812_bc2683aa.jpeg
+INFO:app:Image file size: 440149 bytes
+INFO:app:Analysis complete for 20260810_155812_bc2683aa.jpeg, score: 95
+Traceback (most recent call last):
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/passenger_wsgi.py", line 13, in <module>
+    from app import app as application
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/app.py", line 8, in <module>
+    from PIL import Image, ExifTags
+  File "/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/Image.py", line 90, in <module>
+    from . import _imaging as core
+ImportError: cannot import name '_imaging' from 'PIL' (/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/__init__.py)
+Traceback (most recent call last):
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/passenger_wsgi.py", line 13, in <module>
+    from app import app as application
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/app.py", line 8, in <module>
+    from PIL import Image, ExifTags
+  File "/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/Image.py", line 90, in <module>
+    from . import _imaging as core
+ImportError: cannot import name '_imaging' from 'PIL' (/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/__init__.py)
+[UID:1129][273373] Child process with pid: 273389 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/passenger_wsgi.py", line 13, in <module>
+    from app import app as application
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/app.py", line 8, in <module>
+    from PIL import Image, ExifTags
+  File "/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/Image.py", line 90, in <module>
+    from . import _imaging as core
+ImportError: cannot import name '_imaging' from 'PIL' (/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/__init__.py)
+[UID:1129][273373] Child process with pid: 273531 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/passenger_wsgi.py", line 13, in <module>
+    from app import app as application
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/app.py", line 8, in <module>
+    from PIL import Image, ExifTags
+  File "/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/Image.py", line 90, in <module>
+    from . import _imaging as core
+ImportError: cannot import name '_imaging' from 'PIL' (/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/__init__.py)
+[UID:1129][273373] Child process with pid: 274138 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/passenger_wsgi.py", line 13, in <module>
+    from app import app as application
+  File "/home2/thekidsw/log2.gayathiriportfolio.xyz/app.py", line 8, in <module>
+    from PIL import Image, ExifTags
+  File "/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/Image.py", line 90, in <module>
+    from . import _imaging as core
+ImportError: cannot import name '_imaging' from 'PIL' (/home2/thekidsw/.local/lib/python3.9/site-packages/PIL/__init__.py)
+[UID:1129][273373] Child process with pid: 274142 was killed by signal: 15, core dumped: no
+[UID:1129][1697320] packetLen < 0
+[UID:1129][1701741] packetLen < 0
+[UID:1129][1718220] packetLen < 0
+2026-08-11 15:29:47,551 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:29:47,557 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:29:52,530 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:29:52,537 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:32:17,413 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:32:17,419 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:38:36,691 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-11 15:38:36,697 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-13 10:28:04,637 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-13 10:28:04,642 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-13 10:28:08,784 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-13 10:28:08,789 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-14 10:15:06,306 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-14 10:15:06,313 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-14 10:15:10,417 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-14 10:15:10,423 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)
+2026-08-14 10:20:03,729 [WARNING] OSM property details failed: Expecting value: line 1 column 1 (char 0)
+2026-08-14 10:20:03,734 [ERROR] Overpass error: Expecting value: line 1 column 1 (char 0)

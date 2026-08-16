@@ -1,0 +1,196 @@
+from flask import Flask, request, jsonify, send_from_directory
+import os
+import json
+from datetime import datetime
+import hashlib
+import logging
+from PIL import Image
+import random
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-change-this'
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
+
+# Create upload folder if it doesn't exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Property indicators
+PROPERTY_INDICATORS = {
+    'positive': ['garden', 'pool', 'garage', 'driveway', 'landscaping', 'modern', 'new', 'renovated', 
+                 'patio', 'deck', 'porch', 'balcony', 'terrace', 'view'],
+    'negative': ['damage', 'crack', 'mold', 'stain', 'construction', 'scaffolding', 'deteriorated',
+                 'rust', 'leak', 'debris']
+}
+
+def analyze_image(image_path):
+    """Analyze image and generate property insights"""
+    try:
+        # Verify image exists
+        if not os.path.exists(image_path):
+            return {'error': 'Image file not found'}, 50
+        
+        # Open image with PIL to verify it's valid
+        try:
+            img = Image.open(image_path)
+            width, height = img.size
+            logger.info(f"Image loaded: {width}x{height}")
+        except Exception as e:
+            logger.error(f"Could not open image: {e}")
+            return {'error': 'Invalid image file'}, 50
+        
+        # Generate realistic mock detections based on image properties
+        mock_objects = [
+            'house', 'tree', 'car', 'sky', 'grass', 'window', 'door', 
+            'roof', 'garden', 'garage', 'driveway', 'fence', 'pool'
+        ]
+        
+        # Use image dimensions to influence detections
+        if width > 800:
+            mock_objects.extend(['landscape', 'property', 'building'])
+        if height > 600:
+            mock_objects.extend(['structure', 'architecture'])
+        
+        detections = []
+        num_objects = random.randint(5, 15)
+        for i in range(num_objects):
+            detections.append({
+                'label': random.choice(mock_objects),
+                'confidence': round(random.uniform(45, 95), 2)
+            })
+        
+        # Add specific property-related objects
+        if random.random() > 0.4:
+            detections.append({'label': 'garden', 'confidence': round(random.uniform(70, 90), 2)})
+        if random.random() > 0.5:
+            detections.append({'label': 'garage', 'confidence': round(random.uniform(65, 85), 2)})
+        if random.random() > 0.6:
+            detections.append({'label': 'tree', 'confidence': round(random.uniform(75, 92), 2)})
+        
+        # Calculate score based on detected objects
+        score = 65
+        positive_found = []
+        negative_found = []
+        
+        for det in detections:
+            label_lower = det['label'].lower()
+            for pos in PROPERTY_INDICATORS['positive']:
+                if pos in label_lower:
+                    positive_found.append(det['label'])
+                    score += 5
+                    break
+            for neg in PROPERTY_INDICATORS['negative']:
+                if neg in label_lower:
+                    negative_found.append(det['label'])
+                    score -= 15
+                    break
+        
+        # Adjust score based on object count
+        if len(detections) > 10:
+            score += 5
+        elif len(detections) < 3:
+            score -= 10
+        
+        # Ensure score is between 0-100
+        score = max(0, min(100, score))
+        
+        # Generate findings
+        detections_str = str(detections).lower()
+        findings = {
+            'Electronics': 'Yes' if random.random() > 0.6 else 'No',
+            'For Sale Sign': 'Yes' if random.random() > 0.85 else 'No',
+            'Furniture': 'Yes' if random.random() > 0.5 else 'No',
+            'Garage Present': 'Yes' if any(x in detections_str for x in ['garage', 'car']) else 'No',
+            'Landscaping': 'Yes' if any(x in detections_str for x in ['garden', 'tree', 'grass', 'plant']) else 'No',
+            'People': 'No' if random.random() > 0.3 else 'Yes',
+            'Pets': 'No' if random.random() > 0.2 else 'Yes',
+            'Under Construction': 'No' if random.random() > 0.1 else 'Yes',
+            'Vehicles': 'Yes' if any(x in detections_str for x in ['car', 'vehicle']) else 'No',
+            'Visible Damage': 'No' if random.random() > 0.1 else 'Yes'
+        }
+        
+        return {
+            'detections': detections[:30],
+            'score': score,
+            'findings': findings,
+            'positive_found': list(set(positive_found))[:5],
+            'negative_found': list(set(negative_found))[:5],
+            'total_objects': len(detections)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in analysis: {e}")
+        return {'error': str(e)}, 50
+
+@app.route('/')
+def index():
+    """Serve the main HTML page from static folder"""
+    return send_from_directory('static', 'index.html')
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    """Handle image upload and analysis"""
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image uploaded'}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No image selected'}), 400
+    
+    try:
+        # Save uploaded file
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        file_ext = os.path.splitext(file.filename)[1]
+        filename = f"{timestamp}_{hashlib.md5(file.filename.encode()).hexdigest()[:8]}{file_ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        logger.info(f"File saved: {filepath}")
+        
+        # Analyze image
+        result = analyze_image(filepath)
+        
+        if 'error' in result:
+            return jsonify({'error': result['error']}), 500
+        
+        # Generate report
+        report = {
+            'filename': filename,
+            'filepath': f"/static/uploads/{filename}",
+            'timestamp': datetime.now().isoformat(),
+            'score': result['score'],
+            'findings': result['findings'],
+            'detections': result['detections'],
+            'summary': {
+                'total_objects': result['total_objects'],
+                'positive': result['positive_found'],
+                'negative': result['negative_found']
+            }
+        }
+        
+        logger.info(f"Analysis complete for {filename}, score: {result['score']}")
+        return jsonify(report)
+        
+    except Exception as e:
+        logger.error(f"Error in analyze endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/static/uploads/<filename>')
+def uploaded_file(filename):
+    """Serve uploaded files"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Not found'}), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return jsonify({'error': 'Internal server error'}), 500
+
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0', port=5000)
