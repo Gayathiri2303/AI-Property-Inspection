@@ -1,64 +1,86 @@
 # 🏠 AI Property Inspection
 
-An AI-powered property inspection application designed to streamline the property inspection workflow by using **property images and address information** to assist in generating structured inspection details.
+An AI-powered property inspection platform designed to streamline property inspection workflows using **property photos, address information, satellite/street-view data, AI-assisted analysis, and property scoring**.
 
-The project combines a web-based interface with AI-assisted processing to reduce manual inspection effort and make property assessment faster and more organized.
+The application helps inspectors organize property information, verify the property location visually, analyze inspection information, and generate structured inspection results.
 
 ---
 
-## 🚀 Project Overview
+## 🌐 Live Demo
 
-Property inspections often involve collecting property information, reviewing images, and manually entering inspection details.
+🚀 **[Try AI Property Inspection](https://log2.gayathiriportfolio.xyz/)**
 
-**AI Property Inspection** aims to simplify this workflow.
+The live application demonstrates the complete property inspection workflow from image and address input to property analysis, scoring, and inspection reporting.
 
-Users can provide:
+---
 
-* 📍 Property address
-* 📸 Property images
+## 📌 Project Overview
 
-The application then processes the provided information and assists in generating inspection-related details through an AI-powered workflow.
+Traditional property inspections can involve collecting property photographs, verifying addresses, reviewing external location information, entering inspection details, and preparing reports manually.
 
-### 🔄 Workflow
+**AI Property Inspection** aims to simplify this workflow by bringing these activities together in a single web application.
+
+### 🔄 Inspection Workflow
 
 ```text
-┌──────────────────────┐
-│   Property Address   │
-└──────────┬───────────┘
-           │
-           │
-┌──────────▼───────────┐
-│   Property Images    │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│    AI Processing     │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Inspection Details   │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Structured Inspection│
-│       Workflow       │
-└──────────────────────┘
+📸 Upload Property Photos
+            ↓
+📍 Enter Property Address
+            ↓
+🛰️ Satellite / Street View
+            ↓
+🔍 Visual Property Verification
+            ↓
+🤖 AI-Assisted Analysis
+            ↓
+📊 Property Score
+            ↓
+📋 Inspection Form
+            ↓
+📄 Final Inspection Report
 ```
 
 ---
 
 ## ✨ Key Features
 
-* 🏠 Property inspection workflow
-* 📍 Property address input
-* 📸 Property image upload
-* 🤖 AI-assisted inspection processing
-* 📋 Structured inspection information
-* 🌐 Web-based application
-* 🚀 Server deployment support
+### 📸 Property Photo Upload
+
+Upload property photographs as the primary visual input for the inspection workflow.
+
+### 📍 Address Verification
+
+Enter the property address and use location information to support the inspection process.
+
+### 🛰️ Satellite & Street View
+
+View satellite/location information to help the inspector visually compare the property and its surroundings.
+
+### 🔍 Visual Verification
+
+The application supports a visual comparison workflow between uploaded property photographs and available location imagery.
+
+> Location verification is designed as an inspector-assisted visual verification process rather than an automatic guarantee that an image was captured at a particular address.
+
+### 🤖 AI-Assisted Inspection
+
+AI is used to assist with analyzing inspection-related information and generating structured responses.
+
+### 📊 Property Scoring
+
+The application generates a property score to provide a quick overview of the property's assessed condition.
+
+### 📋 Structured Inspection Form
+
+Inspection information can be organized into a structured form for easier review.
+
+### 🎯 Confidence & Source Information
+
+AI-generated inspection information can include confidence/source information to help the inspector review the generated results.
+
+### 📄 Inspection Reporting
+
+The workflow supports organizing inspection findings into a final inspection report.
 
 ---
 
@@ -66,7 +88,7 @@ The application then processes the provided information and assists in generatin
 
 ### 📸 1. Property Images & Address
 
-Users can upload property images and provide the property address as the initial input for the inspection workflow.
+The inspection workflow begins with property photographs and the property address.
 
 ![Property Images and Address](Screenshots/Screenshot%201.png)
 
@@ -74,7 +96,7 @@ Users can upload property images and provide the property address as the initial
 
 ### 🛰️ 2. Satellite View & Address Verification
 
-The application provides a satellite view of the property and displays address verification information to help validate the property location.
+The application provides a satellite/location view and address verification information to support visual property verification.
 
 ![Satellite View and Address Verification](Screenshots/Screenshot%202.png)
 
@@ -82,23 +104,23 @@ The application provides a satellite view of the property and displays address v
 
 ### 📊 3. Property Score
 
-The application generates a property score based on the inspection workflow, providing a quick overview of the property's assessed condition.
+The application generates a property score that provides a quick overview of the property's assessed condition.
 
 ![Property Score](Screenshots/Screenshot%203.png)
-
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Technology          | Purpose                              |
-| ------------------- | ------------------------------------ |
-| 🐍 Python           | Application backend                  |
-| 🤖 AI               | Inspection assistance and processing |
-| 🌐 Web Application  | User interface and workflow          |
-| 📸 Image Processing | Property image input                 |
-| 📦 pip              | Dependency management                |
-| 🚀 WSGI / Passenger | Server deployment                    |
+| Technology                      | Purpose                                   |
+| ------------------------------- | ----------------------------------------- |
+| 🐍 Python                       | Backend application                       |
+| 🤖 AI                           | Inspection assistance and analysis        |
+| 📸 Image Processing             | Property photo input and analysis         |
+| 🗺️ Mapping / Location Services | Property location and visual verification |
+| 🌐 Web Application              | User interface and inspection workflow    |
+| 📦 Python Packages              | Application dependencies                  |
+| 🚀 WSGI / Passenger             | Server deployment                         |
 
 ---
 
@@ -113,7 +135,6 @@ AI-Property-Inspection/
 │   └── Screenshot 3.png
 │
 ├── app.py
-├── app.py.backup
 ├── config.py
 ├── passenger_wsgi.py
 ├── requirements.txt
@@ -167,13 +188,13 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The application can then be accessed through the local address displayed by the application.
+The application can then be accessed through the local URL provided by the running application.
 
 ---
 
 ## 🌐 Deployment
 
-The project includes configuration for deployment in a server environment.
+The project includes configuration for deployment on a server environment.
 
 Deployment-related files include:
 
@@ -181,43 +202,89 @@ Deployment-related files include:
 * `.htaccess`
 * `requirements.txt`
 
-These files help configure the Python application for deployment on a compatible hosting environment.
+The application is currently deployed and available through the live demo:
+
+🔗 **https://log2.gayathiriportfolio.xyz/**
 
 ---
 
 ## 🎯 Project Objectives
 
-The project was developed with the following objectives:
+The project was developed to explore how AI can be applied to real-world property inspection workflows.
 
-* Automate parts of the property inspection workflow
-* Reduce repetitive manual data entry
-* Use AI to assist with property inspection processing
-* Organize property information and inspection details
-* Provide a practical example of AI applied to the real-estate domain
+### Main objectives
+
+* Reduce repetitive manual inspection tasks
+* Organize property photographs and address information
+* Support property location verification
+* Assist inspectors with AI-generated inspection information
+* Generate a property condition score
+* Organize inspection findings into a structured workflow
+* Support faster preparation of inspection reports
+* Demonstrate a practical AI application in the real-estate domain
+
+---
+
+## 💡 Real-World Use Case
+
+AI-assisted property inspection can help real-estate professionals and inspection teams manage property information more efficiently.
+
+Instead of handling photographs, addresses, location information, inspection questions, and scoring separately, the application brings these steps together into one workflow.
+
+The system is designed as an **inspection assistance tool**, where AI supports the inspector rather than completely replacing human verification.
 
 ---
 
 ## 🔮 Future Improvements
 
-Potential enhancements for the project include:
+Potential future improvements include:
 
-* 🔍 Advanced property image analysis
-* 🏚️ Automatic detection of visible property defects
-* 📊 Property condition scoring
-* 📄 Automated inspection report generation
-* 📥 PDF and CSV report export
-* 🗺️ Street View integration
-* 🤖 More advanced AI-powered inspection recommendations
-* 📈 Property condition analytics
+* 🔍 Advanced computer vision-based property defect detection
+* 🏚️ Automatic detection of visible structural/property issues
+* 📊 More detailed property condition scoring
+* 📄 Automated PDF inspection reports
+* 📥 CSV/Excel report export
+* 🗺️ Improved geolocation verification
+* 🛰️ Enhanced satellite and Street View comparison
+* 🤖 More advanced AI inspection recommendations
+* 📈 Historical property inspection analytics
 * ☁️ Cloud-based image storage
+* 👥 Multi-user inspector management
+* 🔐 Role-based authentication and access control
 
 ---
 
-## 💡 Real-World Application
+## 📈 What I Learned
 
-AI-assisted property inspection can help real-estate professionals and property inspection teams reduce repetitive work and organize inspection information more efficiently.
+Through this project, I gained practical experience with:
 
-The project demonstrates how **AI, Python, image-based processing, and web application development** can be combined to build a practical real-estate solution.
+* Building a real-world AI-powered application
+* Working with property images and location information
+* Integrating AI into a web application workflow
+* Designing an inspection and scoring process
+* Working with deployment configurations
+* Connecting different components of an application
+* Developing a practical solution for the real-estate domain
+
+---
+
+## 🚀 Project Highlights
+
+```text
+🏠 Real Estate Domain
+        +
+📸 Property Image Processing
+        +
+🗺️ Location Verification
+        +
+🤖 AI Assistance
+        +
+📊 Property Scoring
+        +
+📋 Inspection Workflow
+        =
+🚀 AI Property Inspection Platform
+```
 
 ---
 
@@ -227,15 +294,18 @@ The project demonstrates how **AI, Python, image-based processing, and web appli
 
 **Aspiring Data Scientist | Python | SQL | Machine Learning | AI**
 
-🔗 GitHub:
+🔗 **GitHub:**
 https://github.com/Gayathiri2303
 
 ---
 
-## 📌 Project Repository
+## 📌 Repository
 
-🔗 **GitHub:**
+🔗 **GitHub Repository:**
 https://github.com/Gayathiri2303/AI-Property-Inspection
+
+🌐 **Live Application:**
+https://log2.gayathiriportfolio.xyz/
 
 ---
 
