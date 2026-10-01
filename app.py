@@ -10,7 +10,7 @@ from io import BytesIO
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 
-# ─── Logging (critical for debugging on cPanel) ───
+# ─── Logging ───
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -33,7 +33,7 @@ def get_setting(name):
     return ""
 
 app = Flask(__name__, static_folder="static", static_url_path="")
-application = app  # WSGI alias for cPanel Passenger
+application = app
 
 IMAGGA_API_KEY = get_setting("IMAGGA_API_KEY")
 IMAGGA_API_SECRET = get_setting("IMAGGA_API_SECRET")
@@ -59,6 +59,7 @@ except ImportError:
     IMAGEHASH_AVAILABLE = False
     logger.warning("imagehash not installed. Visual comparison disabled.")
 
+
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
@@ -80,19 +81,14 @@ def dms_to_decimal(dms, ref):
 
 
 def extract_gps_coords(image):
-    """Robust GPS extraction supporting Pillow 9.x/10.x."""
     gps_coords = None
     exif_dict = None
-
-    # Legacy API (most reliable for raw GPS dict access)
     try:
         exif_dict = image._getexif()
     except Exception:
         pass
-
     if not exif_dict:
         return None
-
     gps_info = None
     if isinstance(exif_dict, dict):
         for tag_id, value in exif_dict.items():
@@ -100,17 +96,14 @@ def extract_gps_coords(image):
             if tag_name == "GPSInfo" and isinstance(value, dict):
                 gps_info = value
                 break
-
     if not gps_info:
         return None
-
     try:
         lat = dms_to_decimal(gps_info[2], gps_info[1])
         lon = dms_to_decimal(gps_info[4], gps_info[3])
         gps_coords = {"lat": round(lat, 6), "lng": round(lon, 6)}
     except Exception as e:
         logger.warning(f"GPS parsing failed: {e}")
-
     return gps_coords
 
 
@@ -164,7 +157,6 @@ def census_geocode(address):
         matches = data.get("result", {}).get("addressMatches", [])
         if not matches:
             return None, "Address not found in US Census database."
-
         match = matches[0]
         coords = match.get("coordinates", {})
         return {
@@ -418,7 +410,7 @@ def analyze_cross_photo_consistency(processed_images):
                               gps_points[j]["lat"], gps_points[j]["lng"])
                 max_dist = max(max_dist, d)
 
-        results["gps_variance_m"] = round(max_dist)
+        results["gps_variance_m"] = int(round(max_dist))
 
         if max_dist > 500:
             results["same_property_likely"] = "no"
@@ -456,7 +448,7 @@ def analyze_cross_photo_consistency(processed_images):
                     dist = h1 - h2
                     max_hamming = max(max_hamming, dist)
 
-            results["visual_similarity_max"] = max_hamming
+            results["visual_similarity_max"] = int(max_hamming)
 
             if max_hamming > 45:
                 results["warnings"].append(
@@ -511,14 +503,12 @@ def process_all_images(images):
         if PILLOW_AVAILABLE:
             try:
                 image = Image.open(BytesIO(data["bytes"]))
-                
-                # EXIF / GPS extraction
+
                 gps_coords = extract_gps_coords(image)
                 if gps_coords:
                     result["positives"].append(f"GPS embedded: {gps_coords['lat']:.5f}, {gps_coords['lng']:.5f}")
                     proc["gps"] = gps_coords
 
-                # Legacy EXIF for other tags
                 exif_dict = None
                 try:
                     exif_dict = image._getexif()
@@ -537,7 +527,6 @@ def process_all_images(images):
                     result["warnings"].append("No EXIF metadata — could be a screenshot or downloaded image")
                     result["suspicious_score"] += 25
 
-                # Perceptual hash
                 if IMAGEHASH_AVAILABLE:
                     try:
                         phash = str(imagehash.phash(image))
@@ -546,7 +535,6 @@ def process_all_images(images):
                     except Exception:
                         result["perceptual_hash"] = None
 
-                # Resolution check
                 width, height = image.size
                 mp = (width * height) / 1000000
                 if mp < 1:
@@ -558,7 +546,6 @@ def process_all_images(images):
                 else:
                     result["positives"].append(f"Good resolution: {width}x{height} ({mp:.1f} MP)")
 
-                # Transparency check
                 try:
                     if image.mode == "P" and image.info.get("transparency"):
                         result["warnings"].append("Has transparency — unusual for camera photos")
@@ -566,7 +553,6 @@ def process_all_images(images):
                 except Exception:
                     pass
 
-                # Compression check
                 expected_min = (width * height * 3) / 1024 / 10
                 if data["size_kb"] < expected_min * 0.3:
                     result["warnings"].append("Heavily compressed — possible re-upload from web")
@@ -588,7 +574,6 @@ def process_all_images(images):
             else:
                 result["positives"].append(f"File size: {int(data['size_kb'])}KB")
 
-        # Verdict
         if result["suspicious_score"] >= 60:
             result["verdict"] = "HIGHLY SUSPICIOUS"
             result["verdict_color"] = "red"
@@ -605,8 +590,7 @@ def process_all_images(images):
     cross_photo = analyze_cross_photo_consistency(processed_images)
 
     tag_set = set()
-    
-    # Imagga tagging
+
     if IMAGGA_API_KEY and IMAGGA_API_SECRET:
         for data in image_data:
             try:
@@ -630,7 +614,6 @@ def process_all_images(images):
     else:
         api_errors.append("Imagga not configured — using fallback analysis.")
 
-    # OCR
     if OCRSPACE_API_KEY:
         for data in image_data:
             try:
@@ -648,7 +631,6 @@ def process_all_images(images):
                 logger.warning(f"OCR error: {e}")
     ocr_text = ocr_text.lower()
 
-    # Fallback local analysis if no tags
     if not tag_set and PILLOW_AVAILABLE:
         for data in image_data:
             try:
@@ -772,7 +754,6 @@ def build_inspection_answers(tag_set, all_text, location_data, place_results, ar
 
     answers = {}
 
-    # Condition
     condition_score = 50
     pos_tags = {"tree", "plant", "yard", "garden", "lawn", "flower", "shrub", "landscaping", "high_resolution", "bright_image"}
     neg_tags = {"damage", "debris", "rust", "decay", "ruin", "broken", "crack", "construction", "dark_image"}
@@ -807,7 +788,6 @@ def build_inspection_answers(tag_set, all_text, location_data, place_results, ar
         "editable": True, "note": "Based on address geocoding and nearby feature density."
     }
 
-    # Property Use
     building_type = osm_details.get("building_type", "").lower()
     if building_type in ("house", "detached", "bungalow", "cabin", "semidetached_house"):
         property_use = "Single Family - 1 Unit"
@@ -836,7 +816,6 @@ def build_inspection_answers(tag_set, all_text, location_data, place_results, ar
         "Best guess based on building classification and visual tags."
     )
 
-    # Conforms
     residential_types = {"house", "residential", "apartments", "detached", "semidetached_house",
                          "terrace", "bungalow", "cabin", "static_caravan", "townhouse", "duplex"}
     conforms = False
@@ -1066,7 +1045,7 @@ def compute_legacy_score(tag_set, place_results):
             add(w, f"{count} {place.replace('_', ' ')}(s) nearby")
 
     score = max(0, min(100, score))
-    return score, breakdown
+    return int(score), breakdown
 
 
 def score_to_rating(score):
@@ -1128,8 +1107,8 @@ def debug_env():
         "using_census_fallback": True,
         "photo_authenticity": True,
         "cross_photo_check": True,
-        "pillow_available": PILLOW_AVAILABLE,
-        "imagehash_available": IMAGEHASH_AVAILABLE,
+        "pillow_available": bool(PILLOW_AVAILABLE),
+        "imagehash_available": bool(IMAGEHASH_AVAILABLE),
     })
 
 
@@ -1181,7 +1160,7 @@ def verify_address():
             "address_exists": True,
             "osm_class": osm_details.get("class", "unknown"),
             "osm_type": osm_details.get("type", "unknown"),
-            "is_likely_residential": osm_details.get("is_residential", False),
+            "is_likely_residential": bool(osm_details.get("is_residential", False)),
             "building_type": osm_details.get("building_type", "Unknown"),
             "confidence": osm_details.get("confidence", "low"),
         },
@@ -1212,11 +1191,11 @@ def check_photos():
         "photo_count": len(images),
         "authenticity_results": photo_auth,
         "cross_photo_check": cross_photo,
-        "pillow_available": PILLOW_AVAILABLE,
+        "pillow_available": bool(PILLOW_AVAILABLE),
         "summary": {
             "total_suspicious": sum(1 for r in photo_auth if r["suspicious_score"] >= 30),
             "total_clean": sum(1 for r in photo_auth if r["suspicious_score"] < 30),
-            "has_gps": has_gps,
+            "has_gps": bool(has_gps),
             "same_property": cross_photo.get("same_property_likely", "unknown"),
         }
     })
@@ -1292,7 +1271,7 @@ def compare_photos():
                         phash_mismatches.append({
                             "file_a": hashes[i][1]["filename"],
                             "file_b": hashes[j][1]["filename"],
-                            "reason": f"Visually very different (perceptual distance: {dist})"
+                            "reason": f"Visually very different (perceptual distance: {int(dist)})"
                         })
             avg_hamming = total_dist / pair_count if pair_count > 0 else 0
 
@@ -1342,12 +1321,19 @@ def compare_photos():
 
     visual_sim = hamming_to_real_estate_similarity(avg_hamming, max_hamming) if avg_hamming is not None else None
 
+    # ✅ Fix: cast everything to native Python types so JSON can serialize them
+    same_prop_clean = None if same_property is None else bool(same_property)
+    visual_sim_clean = None if visual_sim is None else float(round(visual_sim, 2))
+    gps_spread_clean = None if not gps_points else int(round(max_gps_dist))
+    arch_match_clean = (bool(max_hamming < 38) if IMAGEHASH_AVAILABLE else None)
+    color_match_clean = (bool(color_similarity > 0.5) if color_similarity is not None else None)
+
     return jsonify({
-        "same_property": same_property,
-        "visual_similarity": round(visual_sim, 2) if visual_sim is not None else None,
-        "gps_spread_m": round(max_gps_dist) if gps_points else None,
-        "architecture_match": max_hamming < 38 if IMAGEHASH_AVAILABLE else None,
-        "color_match": color_similarity > 0.5 if color_similarity is not None else None,
+        "same_property": same_prop_clean,
+        "visual_similarity": visual_sim_clean,
+        "gps_spread_m": gps_spread_clean,
+        "architecture_match": arch_match_clean,
+        "color_match": color_match_clean,
         "mismatched_pairs": mismatched_pairs,
         "error": None
     })
@@ -1523,24 +1509,24 @@ def inspect():
         "location": location,
         "location_error": location_error,
         "area_type": area_type,
-        "score": score,
+        "score": int(score),
         "rating": rating,
         "score_breakdown": breakdown,
         "objects_detected": objects_detected,
         "nearby_places": place_results,
         "answers": answers,
         "gemini_analysis": {
-            "available": gemini_result is not None,
+            "available": bool(gemini_result is not None),
             "reasoning": gemini_result.get("reasoning") if gemini_result else None,
             "error": gemini_error,
         },
         "photo_authenticity": {
             "results": photo_auth,
-            "pillow_available": PILLOW_AVAILABLE,
+            "pillow_available": bool(PILLOW_AVAILABLE),
             "gps_match": {
-                "checked": any(any("GPS embedded" in p for p in r["positives"]) for r in photo_auth),
-                "mismatch": gps_mismatch,
-                "distance_m": round(gps_distance) if gps_distance else None,
+                "checked": bool(any(any("GPS embedded" in p for p in r["positives"]) for r in photo_auth)),
+                "mismatch": bool(gps_mismatch),
+                "distance_m": int(round(gps_distance)) if gps_distance else None,
             }
         },
         "cross_photo_check": cross_photo,
