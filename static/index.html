@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Property Inspection — USA</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root { --primary:#2563eb; --success:#16a34a; --danger:#dc2626; --warn:#d97706; --bg:#f1f5f9; }
+  * { box-sizing:border-box; }
+  body { font-family:system-ui,-apple-system,sans-serif; background:var(--bg); margin:0; padding:20px; color:#1e293b; line-height:1.5; }
+  .card { background:#fff; border-radius:12px; padding:24px; max-width:1100px; margin:0 auto 20px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+  h1 { text-align:center; color:#0f172a; margin-bottom:4px; }
+  .subtitle { text-align:center; color:#64748b; font-size:14px; margin-bottom:20px; }
+
+  #dropZone { border:2px dashed #cbd5e1; border-radius:12px; padding:40px; text-align:center; cursor:pointer; color:#64748b; transition:all .2s; }
+  #dropZone.dragover { background:#eff6ff; border-color:var(--primary); }
+  #preview { display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; }
+  #preview .thumb { position:relative; width:100px; height:100px; }
+  #preview .thumb img { width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; }
+  #preview .thumb .remove { position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; }
+
+  .input-group { margin-top:16px; position:relative; }
+  .input-group label { display:block; font-size:13px; font-weight:600; color:#475569; margin-bottom:6px; }
+  input[type=text] { width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:8px; font-size:15px; }
+  input[type=text]:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+
+  .suggestions-box {
+    position:absolute; top:100%; left:0; right:0;
+    background:#fff; border:1px solid #cbd5e1; border-top:none;
+    border-radius:0 0 8px 8px; max-height:260px; overflow-y:auto;
+    z-index:100; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);
+    margin-top:-4px; padding-top:4px;
+  }
+  .suggestion-item { padding:10px 14px; cursor:pointer; font-size:14px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:8px; }
+  .suggestion-item:hover { background:#eff6ff; }
+  .suggestion-item .sugg-icon { font-size:16px; }
+  .suggestion-item .sugg-meta { font-size:11px; color:#94a3b8; margin-left:auto; white-space:nowrap; }
+  .suggestion-empty { padding:12px; color:#94a3b8; font-size:13px; text-align:center; }
+  .suggestion-loading { padding:12px; color:#64748b; font-size:13px; text-align:center; }
+  .address-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .address-actions a { font-size:12px; color:var(--primary); text-decoration:none; padding:4px 8px; background:#eff6ff; border-radius:6px; border:1px solid #bfdbfe; }
+  .address-actions a:hover { background:#dbeafe; }
+
+  .chips { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { padding:6px 14px; background:#f1f5f9; border-radius:20px; cursor:pointer; font-size:13px; color:#334155; border:1px solid #e2e8f0; }
+  .chip:hover { background:#e2e8f0; }
+
+  button { padding:12px 24px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:15px; font-weight:600; }
+  button:disabled { background:#94a3b8; cursor:not-allowed; }
+  .btn-secondary { background:#fff; color:#334155; border:1px solid #cbd5e1; }
+  .btn-success { background:var(--success); }
+  .btn-warn { background:var(--warn); color:#fff; }
+
+  #status { margin-top:12px; padding:12px; border-radius:8px; font-size:14px; display:none; }
+  #status.info { display:block; background:#eff6ff; color:#1e40af; }
+  #status.error { display:block; background:#fef2f2; color:#991b1b; }
+  #status.success { display:block; background:#f0fdf4; color:#166534; }
+  #status.warn { display:block; background:#fffbeb; color:#92400e; }
+
+  .hidden { display:none !important; }
+
+  .verify-box { background:#f0fdf4; border:1px solid #86efac; padding:16px; border-radius:10px; margin-bottom:16px; }
+  .verify-box.error { background:#fef2f2; border-color:#fca5a5; }
+  .verify-box.warn { background:#fffbeb; border-color:#fcd34d; }
+  .section-title { font-size:18px; font-weight:700; color:#0f172a; margin:24px 0 12px; padding-bottom:8px; border-bottom:2px solid #e2e8f0; }
+
+  #verifyMap, #map { height:300px; border-radius:10px; border:1px solid #e2e8f0; }
+  #miniSatellite { height:200px; border-radius:8px; border:1px solid #e2e8f0; }
+  #streetViewFrame { width:100%; height:320px; border-radius:10px; border:1px solid #e2e8f0; margin-top:8px; }
+
+  .auth-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:12px; }
+  .auth-card.red { background:#fef2f2; border-color:#fca5a5; }
+  .auth-card.orange { background:#fffbeb; border-color:#fcd34d; }
+  .auth-card.green { background:#f0fdf4; border-color:#86efac; }
+  .auth-title { font-weight:700; margin-bottom:8px; }
+  .auth-warn { color:#dc2626; font-size:13px; margin:4px 0; }
+  .auth-pos { color:#16a34a; font-size:13px; margin:4px 0; }
+
+  .inspection-table { width:100%; border-collapse:collapse; font-size:14px; }
+  .inspection-table th { background:#f8fafc; text-align:left; padding:12px; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569; }
+  .inspection-table td { padding:12px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+  .inspection-table tr:hover { background:#f8fafc; }
+  .inspection-table tr.low-confidence { background:#fffbeb; }
+
+  .badge { display:inline-block; padding:4px 10px; border-radius:6px; font-size:13px; font-weight:600; }
+  .badge-yes { background:#dcfce7; color:#166534; }
+  .badge-no { background:#fee2e2; color:#991b1b; }
+  .badge-unknown { background:#f3f4f6; color:#374151; }
+
+  .confidence { font-size:12px; color:#64748b; }
+  .source { font-size:11px; color:#94a3b8; }
+  .note { font-size:12px; color:#d97706; margin-top:4px; }
+
+  select.review-select, textarea.review-textarea { padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:14px; background:#fff; cursor:pointer; width:100%; font-family:inherit; }
+  select.review-select:focus, textarea.review-textarea:focus { outline:none; border-color:var(--primary); }
+  textarea.review-textarea { min-height:60px; resize:vertical; cursor:text; }
+
+  .score-box { display:flex; align-items:center; gap:20px; margin:16px 0; }
+  .score-number { font-size:48px; font-weight:800; color:var(--primary); }
+  .score-label { font-size:16px; color:#64748b; }
+
+  .obj-chip { display:inline-block; background:#f1f5f9; padding:5px 12px; border-radius:16px; margin:3px; font-size:13px; color:#334155; }
+
+  .places-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .place-item { display:flex; justify-content:space-between; padding:10px 12px; background:#f8fafc; border-radius:8px; }
+  .place-name { font-weight:500; color:#334155; }
+  .place-val { font-weight:600; }
+
+  .actions { display:flex; gap:12px; margin-top:24px; justify-content:center; flex-wrap:wrap; }
+
+  .disclaimer { background:#fffbeb; border:1px solid #fcd34d; padding:12px 16px; border-radius:8px; font-size:13px; color:#92400e; margin-bottom:20px; }
+  .legal-box { background:#fffbeb; border:1px solid #fcd34d; padding:16px; border-radius:10px; margin:16px 0; }
+  .checklist-box { background:#f0fdf4; border:1px solid #86efac; padding:16px; border-radius:10px; margin-bottom:16px; }
+  .checklist-box label { display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px; cursor:pointer; }
+
+  .consistency-panel { margin-top:16px; padding:16px; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; }
+  .consistency-panel.mismatch { background:#fef2f2; border-color:#fca5a5; }
+  .consistency-panel.match { background:#f0fdf4; border-color:#86efac; }
+  .consistency-panel.pending { background:#fffbeb; border-color:#fcd34d; }
+  .consistency-title { font-weight:700; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .consistency-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:12px; }
+  .consistency-metric { background:#fff; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; }
+  .consistency-metric.bad { border-color:#fca5a5; background:#fef2f2; }
+  .consistency-metric.good { border-color:#86efac; background:#f0fdf4; }
+  .consistency-metric-label { font-size:13px; color:#475569; }
+  .consistency-metric-val { font-weight:700; font-size:14px; }
+  .photo-pair-grid { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .photo-pair-grid img { width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid #e2e8f0; }
+  .override-box { margin-top:12px; padding:10px; background:#fff; border-radius:6px; border:1px solid #fcd34d; }
+  .override-box label { display:flex; align-items:flex-start; gap:8px; font-size:13px; cursor:pointer; color:#92400e; }
+
+  .debug-raw { background:#1e293b; color:#e2e8f0; padding:12px; border-radius:8px; font-size:12px; font-family:monospace; white-space:pre-wrap; word-break:break-word; max-height:200px; overflow-y:auto; margin-top:8px; }
+
+  .form-section { margin-bottom:24px; }
+  .form-section h3 { font-size:16px; color:#0f172a; margin:0 0 12px; padding-bottom:6px; border-bottom:1px solid #e2e8f0; }
+
+  .home-preview { margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .home-preview-box { border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; background:#fff; }
+  .home-preview-box h4 { margin:0; padding:10px 12px; background:#f8fafc; font-size:13px; color:#475569; border-bottom:1px solid #e2e8f0; }
+  .home-preview-box #homeSatMap { width:100%; height:220px; border:none; display:block; }
+  .home-preview-box .preview-links { padding:16px; text-align:center; }
+  .home-preview-box .preview-links a { display:inline-block; margin:6px; padding:8px 16px; background:var(--primary); color:#fff; text-decoration:none; border-radius:6px; font-size:13px; font-weight:600; }
+  .home-preview-box .preview-links a:hover { background:#1d4ed8; }
+  .gemini-panel { background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:10px; margin:16px 0; }
+  .gemini-panel h4 { margin:0 0 8px; color:#1e40af; font-size:15px; }
+  .gemini-panel p { margin:4px 0; font-size:13px; color:#334155; }
+  .gemini-badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; margin-left:8px; }
+  .gemini-badge.ok { background:#dcfce7; color:#166534; }
+  .gemini-badge.fail { background:#fee2e2; color:#991b1b; }
+
+  .sv-tabs { display:flex; gap:8px; margin-bottom:8px; }
+  .sv-tab { padding:6px 14px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-size:13px; }
+  .sv-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .sv-frame { width:100%; height:320px; border-radius:10px; border:1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🏠 AI Property Inspection</h1>
+  <p class="subtitle">Upload property photos + address → Verify with maps → AI fills form → You confirm</p>
+
+  <div id="dropZone">📷 <strong>Drag & drop</strong> property photos here, or click to browse</div>
+  <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+  <div id="preview"></div>
+
+  <div id="consistencyPanel" class="consistency-panel hidden">
+    <div class="consistency-title" id="consistencyTitle">🔍 Checking photo consistency...</div>
+    <div id="consistencyBody">Analyzing whether all uploaded photos appear to be from the same property.</div>
+    <div id="consistencyDebug" class="hidden" style="margin-top:8px;">
+      <strong style="font-size:12px; color:#dc2626;">Server Response (Debug):</strong>
+      <div id="consistencyDebugText" class="debug-raw"></div>
+    </div>
+    <div id="consistencyMetrics" class="consistency-grid hidden"></div>
+    <div id="consistencyOverride" class="override-box hidden">
+      <label>
+        <input type="checkbox" id="overrideMismatch" style="margin-top:2px;">
+        <span><strong>I understand the warning.</strong> These photos are indeed from the same property; proceed anyway.</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="input-group">
+    <label for="address">Property Address (USA)</label>
+    <input type="text" id="address" placeholder="e.g. 123 Main Street, Miami, FL 33101" autocomplete="off">
+    <div id="addressSuggestions" class="suggestions-box hidden"></div>
+    <div class="address-actions">
+      <a href="#" id="zillowLink" target="_blank">🏠 View on Zillow</a>
+      <a href="#" id="realtorLink" target="_blank">🔍 View on Realtor.com</a>
+      <span style="font-size:11px;color:#94a3b8;margin-left:auto;">Type to search validated addresses</span>
+    </div>
+  </div>
+  <div class="chips">
+    <span class="chip" data-addr="1600 Amphitheatre Parkway, Mountain View, CA">🌉 Mountain View, CA</span>
+    <span class="chip" data-addr="350 Fifth Avenue, New York, NY">🗽 New York, NY</span>
+    <span class="chip" data-addr="200 E Las Olas Blvd, Fort Lauderdale, FL">🌴 Fort Lauderdale, FL</span>
+    <span class="chip" data-addr="1000 Vin Scully Ave, Los Angeles, CA">⚾ Los Angeles, CA</span>
+  </div>
+
+  <div id="homePreviewWrap" class="hidden">
+    <div class="section-title" style="margin-top:20px;">🛰️ Live Location Preview</div>
+    <div class="home-preview">
+      <div class="home-preview-box">
+        <h4>🛰️ Satellite View</h4>
+        <div id="homeSatMap"></div>
+      </div>
+      <div class="home-preview-box">
+        <h4>🚗 Street View Options</h4>
+        <div class="preview-links">
+          <p style="font-size:13px; color:#64748b; margin:0 0 12px;">If the embedded view doesn't load, use these external links:</p>
+          <a id="homeMapillaryLink" href="#" target="_blank">Open Mapillary ↗</a>
+          <a id="homeGoogleMapsLink" href="#" target="_blank">Open Google Maps ↗</a>
+          <a id="homeGoogleSVLink" href="#" target="_blank">Open Street View ↗</a>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:12px; color:#64748b; margin-top:8px;">Preview updates as you type. Confirm this matches your property before proceeding.</p>
+  </div>
+
+  <div style="margin-top:16px;">
+    <button id="verifyBtn" class="btn-secondary">📍 Step 1: Verify Address</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<div class="card hidden" id="verifyCard">
+  <h2>🔍 Step 1: Verify Address & Property</h2>
+  <div id="verifyLoading" class="hidden" style="color:#64748b; margin:10px 0;">Verifying address via OpenStreetMap...</div>
+
+  <div id="verifyResults" class="hidden">
+    <div class="verify-box" id="verifyBox">
+      <h4 style="margin-top:0; color:#166534;">✅ Address Verified</h4>
+      <p id="verifyAddressText" style="margin:4px 0; color:#166534;"></p>
+      <p id="verifyPropertyType" style="margin:4px 0; font-size:14px; color:#15803d;"></p>
+    </div>
+
+    <div class="section-title" style="margin-top:0;">🛰️ Satellite View — Does this look like your property?</div>
+    <div id="verifyMap"></div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:16px;">The pin shows the geocoded address. Zoom in and compare with your photos.</p>
+
+    <div class="section-title">🚗 Street View — Compare with your photos</div>
+    <div class="sv-tabs">
+      <button class="sv-tab active" onclick="switchSV('mapillary')">Mapillary</button>
+      <button class="sv-tab" onclick="switchSV('google')">Google Street View</button>
+    </div>
+    <iframe id="streetViewFrame" class="sv-frame" src="" frameborder="0" allowfullscreen></iframe>
+    <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;">
+      <a id="verifyMapillaryLink" href="#" target="_blank" style="font-size:13px; color:var(--primary);">Open Mapillary ↗</a>
+      <a id="verifyGoogleSVLink" href="#" target="_blank" style="font-size:13px; color:var(--primary);">Open Google Street View ↗</a>
+    </div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:16px; margin-top:8px;">
+      Street-level imagery from Mapillary / Google. If blank, use the external links above.
+    </p>
+
+    <div class="section-title">📸 Photo vs. Location Comparison</div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+      The system cannot automatically verify photos. Please visually compare your uploaded photos 
+      with the satellite imagery above and the street view below.
+    </p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+      <div>
+        <h4 style="margin:0 0 8px; font-size:14px; color:#475569;">📷 Your Uploaded Photos</h4>
+        <div id="verifyPhotoPreview" style="display:flex; flex-wrap:wrap; gap:8px; max-height:200px; overflow-y:auto; padding:8px; background:#f8fafc; border-radius:8px;"></div>
+      </div>
+      <div>
+        <h4 style="margin:0 0 8px; font-size:14px; color:#475569;">🛰️ Satellite at This Location</h4>
+        <div id="miniSatellite"></div>
+      </div>
+    </div>
+
+    <div class="checklist-box">
+      <h4 style="margin-top:0; color:#166534;">✅ Inspector Visual Verification Checklist</h4>
+      <label><input type="checkbox" class="visual-check"> Roof shape / color in photo matches satellite imagery</label>
+      <label><input type="checkbox" class="visual-check"> Driveway / garage position matches map</label>
+      <label><input type="checkbox" class="visual-check"> Street view shows the same house facade</label>
+      <label><input type="checkbox" class="visual-check"> Landscaping / trees in photo match satellite view</label>
+    </div>
+
+    <div class="section-title">📡 Photo Authenticity Check</div>
+    <button id="checkPhotosBtn" class="btn-secondary" style="font-size:13px; padding:8px 16px;">🔍 Analyze Photo Authenticity</button>
+    <div id="photoAuthResults" style="margin-top:12px;"></div>
+
+    <div class="legal-box">
+      <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+        <input type="checkbox" id="affirmCheckbox" style="margin-top:3px; width:18px; height:18px;">
+        <span style="font-size:14px; color:#92400e;">
+          <strong>I affirm that the uploaded photos were taken at the address provided above.</strong>
+          I understand that this system cannot verify photo location without GPS metadata,
+          and I accept full responsibility for the accuracy of this information.
+          I understand that false information may invalidate any generated report.
+        </span>
+      </label>
+    </div>
+
+    <div style="margin-top:16px; text-align:center;">
+      <button id="proceedBtn" disabled style="opacity:0.5;">✅ Confirmed — Proceed to Analysis</button>
+    </div>
+  </div>
+
+  <div id="verifyError" class="hidden verify-box error">
+    <h4 style="margin-top:0; color:#991b1b;">❌ Verification Failed</h4>
+    <p id="verifyErrorText" style="margin:4px 0; color:#991b1b;"></p>
+  </div>
+</div>
+
+<div class="card hidden" id="resultsCard">
+  <div class="disclaimer">
+    ⚠️ <strong>Important:</strong> These are AI-generated estimates. All answers must be reviewed and confirmed before generating a final report. Low-confidence predictions are highlighted in yellow.
+  </div>
+
+  <div id="mapWrap">
+    <div class="section-title">📍 Verified Location</div>
+    <div id="map"></div>
+    <p id="locationText" style="margin-top:8px; font-size:14px; color:#64748b;"></p>
+  </div>
+
+  <div class="section-title">🏆 Property Score</div>
+  <div class="score-box">
+    <div class="score-number" id="scoreBadge">--</div>
+    <div class="score-label" id="ratingText">Waiting for analysis...</div>
+  </div>
+
+  <div id="geminiPanel" class="gemini-panel hidden">
+    <h4>🤖 Gemini AI Vision Analysis <span id="geminiBadge" class="gemini-badge ok">Active</span></h4>
+    <p id="geminiReasoning"></p>
+  </div>
+
+  <div class="section-title">📋 Inspection Form <span style="font-size:13px; font-weight:400; color:#64748b;">— Review each answer and confirm</span></div>
+
+  <div class="form-section">
+    <h3>1. General Information</h3>
+    <table class="inspection-table" id="section1Table">
+      <thead><tr><th style="width:30%">Question</th><th style="width:20%">AI Answer</th><th style="width:15%">Confidence</th><th style="width:20%">Source</th><th style="width:15%">Your Answer</th></tr></thead>
+      <tbody id="section1Body"></tbody>
+    </table>
+  </div>
+
+  <div class="form-section">
+    <h3>2. Property Details</h3>
+    <table class="inspection-table" id="section2Table">
+      <thead><tr><th style="width:30%">Question</th><th style="width:20%">AI Answer</th><th style="width:15%">Confidence</th><th style="width:20%">Source</th><th style="width:15%">Your Answer</th></tr></thead>
+      <tbody id="section2Body"></tbody>
+    </table>
+  </div>
+
+  <div class="form-section">
+    <h3>3. General Comments</h3>
+    <table class="inspection-table" id="section3Table">
+      <thead><tr><th style="width:30%">Question</th><th style="width:20%">AI Answer</th><th style="width:15%">Confidence</th><th style="width:20%">Source</th><th style="width:15%">Your Answer</th></tr></thead>
+      <tbody id="section3Body"></tbody>
+    </table>
+  </div>
+
+  <div class="form-section">
+    <h3>4. Neighborhood Assessment</h3>
+    <table class="inspection-table" id="section4Table">
+      <thead><tr><th style="width:30%">Question</th><th style="width:20%">AI Answer</th><th style="width:15%">Confidence</th><th style="width:20%">Source</th><th style="width:15%">Your Answer</th></tr></thead>
+      <tbody id="section4Body"></tbody>
+    </table>
+  </div>
+
+  <div class="form-section">
+    <h3>5. Positive Location Factors</h3>
+    <table class="inspection-table" id="section5Table">
+      <thead><tr><th style="width:30%">Question</th><th style="width:20%">AI Answer</th><th style="width:15%">Confidence</th><th style="width:20%">Source</th><th style="width:15%">Your Answer</th></tr></thead>
+      <tbody id="section5Body"></tbody>
+    </table>
+  </div>
+
+  <div class="section-title">🔍 Objects Detected in Photos</div>
+  <div id="objectsArea"><em>No objects detected yet.</em></div>
+
+  <div class="section-title">🗺️ Location Analysis (OpenStreetMap)</div>
+  <div class="places-grid" id="placesArea"></div>
+
+  <div class="actions">
+    <button id="generateReportBtn" class="btn-success">📄 Generate Final Report</button>
+  </div>
+
+  <div id="reportOutput" class="hidden" style="margin-top:24px; padding:20px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const verifyBtn = document.getElementById('verifyBtn');
+const status = document.getElementById('status');
+let selectedFiles = [];
+let verifyMap = null, miniSatMap = null, map = null, homeSatMap = null;
+let verifyMarker = null, miniMarker = null, marker = null, homeMarker = null;
+let verifiedAddress = null, currentLocation = null, currentAddress = '';
+let currentAnswers = {};
+let photoConsistencyData = null;
+let suggestionAbort = null;
+let homePreviewLat = null, homePreviewLng = null;
+let currentSVLat = null, currentSVLng = null;
+
+const SECTION_MAP = {
+  property_condition: 1, location_type: 1, property_use: 1,
+  conforms_to_neighborhood: 2, able_to_view_property: 2, for_sale_sign: 2,
+  garage_present: 2, under_construction: 2, repairs_required: 2,
+  general_comments: 3,
+  high_tension_wires: 4, vacant_homes_in_area: 4, landfill_nearby: 4,
+  commercial_nearby: 4, railroad_nearby: 4, highway_nearby: 4,
+  airport_nearby: 4, gated_community: 4,
+  resort_nearby: 5, golf_course_nearby: 5, waterfront: 5,
+  park_nearby: 5, lake_view: 5, mountain_view: 5,
+};
+
+const QUESTION_LABELS = {
+  property_condition: 'Condition Rating', location_type: 'Location (Urban/Suburban/Rural)',
+  property_use: 'Property Use', conforms_to_neighborhood: 'Conforms to Neighborhood',
+  able_to_view_property: 'Able to View Property', for_sale_sign: 'For Sale Sign Posted',
+  garage_present: 'Garage Present', under_construction: 'Dwelling Under Construction',
+  repairs_required: 'Repairs Required', general_comments: 'General Comments',
+  high_tension_wires: 'High Tension Electric Wires', vacant_homes_in_area: 'Vacant Homes in Area',
+  landfill_nearby: 'Landfill/Waste Management Nearby', commercial_nearby: 'Commercial/Industrial Nearby',
+  railroad_nearby: 'Railroad Track/Station Nearby', highway_nearby: 'Interstate/Freeway/Highway Nearby',
+  airport_nearby: 'Private or Public Airport Nearby', gated_community: 'Private Gated Community',
+  resort_nearby: 'Resort', golf_course_nearby: 'Golf Course', waterfront: 'Waterfront',
+  park_nearby: 'Park', lake_view: 'Lake View', mountain_view: 'Mountain View',
+};
+
+/* ─── Street View Switcher ─── */
+function switchSV(provider) {
+  document.querySelectorAll('.sv-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (!currentSVLat || !currentSVLng) return;
+    if (provider === 'mapillary') {
+    document.getElementById('streetViewFrame').src = 
+      `https://www.mapillary.com/embed?lat=${currentSVLat}&lng=${currentSVLng}&z=17&panos=true&navless=true`;
+  } else {
+    document.getElementById('streetViewFrame').src = 
+      `https://www.google.com/maps/embed?pb=!4v0!6m8!1m7!1s!2m2!1d${currentSVLat}!2d${currentSVLng}!3f0!4f0!5f0.7820865974627469`;
+  }
+}
+
+/* ─── Address Autocomplete ─── */
+const addressInput = document.getElementById('address');
+const suggestionsBox = document.getElementById('addressSuggestions');
+const zillowLink = document.getElementById('zillowLink');
+const realtorLink = document.getElementById('realtorLink');
+
+function updateRealEstateLinks(addr) {
+  if (!addr) { zillowLink.href = '#'; realtorLink.href = '#'; return; }
+  const encoded = encodeURIComponent(addr);
+  zillowLink.href = `https://www.zillow.com/homes/${encoded}_rb/`;
+  realtorLink.href = `https://www.realtor.com/realestateandhomes-search/${encoded.replace(/ /g, '-')}`;
+}
+
+addressInput.addEventListener('input', debounce(async (e) => {
+  const query = e.target.value.trim();
+  updateRealEstateLinks(query);
+  updateHomePreview(query);
+  if (query.length < 3) { suggestionsBox.classList.add('hidden'); return; }
+
+  suggestionsBox.classList.remove('hidden');
+  suggestionsBox.innerHTML = '<div class="suggestion-loading">Searching addresses...</div>';
+
+  if (suggestionAbort) suggestionAbort.abort();
+  suggestionAbort = new AbortController();
+
+  try {
+    const res = await fetch('/api/address-suggestions?q=' + encodeURIComponent(query), {
+      signal: suggestionAbort.signal
+    });
+    const data = await safeJson(res, 'Address Suggestions');
+    renderSuggestions(data.suggestions || []);
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      suggestionsBox.innerHTML = '<div class="suggestion-empty">Unable to fetch suggestions</div>';
+    }
+  }
+}, 300));
+
+function renderSuggestions(list) {
+  if (!list.length) {
+    suggestionsBox.innerHTML = '<div class="suggestion-empty">No addresses found. Try a more specific query.</div>';
+    return;
+  }
+  suggestionsBox.innerHTML = '';
+  list.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.innerHTML = `
+      <span class="sugg-icon">📍</span>
+      <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(item.address)}</span>
+      ${item.source ? `<span class="sugg-meta">${escapeHtml(item.source)}</span>` : ''}
+    `;
+    div.addEventListener('click', () => {
+      addressInput.value = item.address;
+      updateRealEstateLinks(item.address);
+      updateHomePreview(item.address);
+      suggestionsBox.classList.add('hidden');
+    });
+    suggestionsBox.appendChild(div);
+  });
+}
+
+addressInput.addEventListener('blur', () => {
+  setTimeout(() => suggestionsBox.classList.add('hidden'), 200);
+});
+addressInput.addEventListener('focus', () => {
+  if (addressInput.value.trim().length >= 3 && suggestionsBox.children.length) {
+    suggestionsBox.classList.remove('hidden');
+  }
+});
+
+/* ─── Home Page Preview ─── */
+async function updateHomePreview(addr) {
+  if (!addr || addr.length < 8) {
+    document.getElementById('homePreviewWrap').classList.add('hidden');
+    return;
+  }
+  try {
+    const res = await fetch('/api/verify-address', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({address: addr})
+    });
+    const data = await safeJson(res, 'Home Preview');
+    if (data.valid) {
+      const lat = data.location.lat;
+      const lng = data.location.lng;
+      homePreviewLat = lat;
+      homePreviewLng = lng;
+      document.getElementById('homePreviewWrap').classList.remove('hidden');
+      document.getElementById('homeMapillaryLink').href = `https://www.mapillary.com/app/?lat=${lat}&lng=${lng}&z=17`;
+      document.getElementById('homeGoogleMapsLink').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+      document.getElementById('homeGoogleSVLink').href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+      showHomeSatMap(lat, lng);
+    }
+  } catch (e) {
+    document.getElementById('homePreviewWrap').classList.add('hidden');
+  }
+}
+
+function showHomeSatMap(lat, lng) {
+  if (!homeSatMap) {
+    homeSatMap = L.map('homeSatMap').setView([lat, lng], 18);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Esri', maxZoom: 19
+    }).addTo(homeSatMap);
+    homeMarker = L.marker([lat, lng]).addTo(homeSatMap);
+  } else {
+    homeSatMap.setView([lat, lng], 18);
+    homeMarker.setLatLng([lat, lng]);
+  }
+  setTimeout(() => homeSatMap.invalidateSize(), 300);
+}
+
+/* ─── Chips ─── */
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => {
+    document.getElementById('address').value = c.dataset.addr;
+    updateRealEstateLinks(c.dataset.addr);
+    updateHomePreview(c.dataset.addr);
+    suggestionsBox.classList.add('hidden');
+  });
+});
+
+/* ─── File Upload ─── */
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(files) {
+  const newFiles = Array.from(files);
+  selectedFiles = selectedFiles.concat(newFiles);
+  renderPreview();
+  checkPhotoConsistency();
+}
+
+function renderPreview() {
+  preview.innerHTML = '';
+  selectedFiles.forEach((file, idx) => {
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    const btn = document.createElement('button');
+    btn.className = 'remove';
+    btn.textContent = '×';
+    btn.onclick = () => { selectedFiles.splice(idx, 1); renderPreview(); checkPhotoConsistency(); };
+    div.appendChild(img);
+    div.appendChild(btn);
+    preview.appendChild(div);
+  });
+}
+
+/* ─── Safe JSON Parser ─── */
+async function safeJson(response, context) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const snippet = text.substring(0, 500).replace(/</g, '&lt;');
+    throw new Error(
+      `${context} failed: Server returned ${response.status} ${response.statusText} ` +
+      `but the response was not valid JSON.\n\n` +
+      `Raw response snippet:\n${snippet}\n\n` +
+      `→ Check that your app.py has the matching route and returns jsonify(...).`
+    );
+  }
+}
+
+/* ─── Photo Consistency Check ─── */
+async function checkPhotoConsistency() {
+  const panel = document.getElementById('consistencyPanel');
+  const title = document.getElementById('consistencyTitle');
+  const body = document.getElementById('consistencyBody');
+  const metrics = document.getElementById('consistencyMetrics');
+  const override = document.getElementById('consistencyOverride');
+  const debugBox = document.getElementById('consistencyDebug');
+  const debugText = document.getElementById('consistencyDebugText');
+
+  photoConsistencyData = null;
+  override.classList.add('hidden');
+  debugBox.classList.add('hidden');
+  document.getElementById('overrideMismatch').checked = false;
+
+  if (selectedFiles.length < 2) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.classList.remove('hidden', 'match', 'mismatch');
+  panel.classList.add('pending');
+  title.textContent = '🔍 Checking photo consistency...';
+  body.textContent = 'Analyzing whether all uploaded photos appear to be from the same property.';
+  metrics.classList.add('hidden');
+  metrics.innerHTML = '';
+
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('images', f));
+
+  try {
+    const res = await fetch('/api/compare-photos', { method: 'POST', body: formData });
+    const data = await safeJson(res, 'Photo Consistency');
+
+    photoConsistencyData = data;
+    panel.classList.remove('pending');
+    metrics.classList.remove('hidden');
+
+    if (data.same_property === true) {
+      panel.classList.add('match');
+      title.innerHTML = '✅ Photos appear to be from the <strong>same property</strong>';
+      body.textContent = 'Visual features and GPS metadata are consistent across all uploaded images.';
+    } else if (data.same_property === false) {
+      panel.classList.add('mismatch');
+      title.innerHTML = '⚠️ Photos may be from <strong>different properties</strong>';
+      body.textContent = 'Inconsistencies were detected between uploaded images. Please review the details below.';
+      override.classList.remove('hidden');
+    } else {
+      panel.classList.add('pending');
+      title.textContent = '⚠️ Inconclusive consistency check';
+      body.textContent = data.error || 'Not enough information to determine if photos are from the same property.';
+    }
+
+    metrics.innerHTML = '';
+    const items = [
+      { label: 'Visual Consistency', val: data.visual_similarity ? Math.round(data.visual_similarity * 100) + '%' : 'N/A', good: (data.visual_similarity || 0) > 0.45 },
+      { label: 'GPS Spread', val: data.gps_spread_m ? data.gps_spread_m + 'm' : 'No GPS', good: (data.gps_spread_m || 0) < 50 },
+      { label: 'Architecture Match', val: data.architecture_match ? 'Yes' : 'No', good: data.architecture_match === true },
+      { label: 'Dominant Colors Match', val: data.color_match ? 'Yes' : 'No', good: data.color_match === true },
+    ];
+    items.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'consistency-metric ' + (m.good ? 'good' : 'bad');
+      div.innerHTML = `<span class="consistency-metric-label">${m.label}</span><span class="consistency-metric-val">${m.val}</span>`;
+      metrics.appendChild(div);
+    });
+
+    if (data.mismatched_pairs && data.mismatched_pairs.length) {
+      const pairsDiv = document.createElement('div');
+      pairsDiv.style.marginTop = '12px';
+      pairsDiv.innerHTML = '<strong style="font-size:13px; color:#991b1b;">Mismatched Pairs:</strong>';
+      data.mismatched_pairs.forEach(pair => {
+        const p = document.createElement('div');
+        p.style.fontSize = '12px'; p.style.color='#64748b'; p.style.marginTop='4px';
+        p.textContent = `• ${pair.file_a} ↔ ${pair.file_b}: ${pair.reason}`;
+        pairsDiv.appendChild(p);
+      });
+      metrics.appendChild(pairsDiv);
+    }
+
+  } catch (e) {
+    panel.classList.remove('pending'); panel.classList.add('mismatch');
+    title.textContent = '❌ Consistency check failed';
+    body.textContent = e.message.split('\n')[0];
+    debugBox.classList.remove('hidden');
+    debugText.textContent = e.message;
+  }
+}
+
+/* ─── Status Helper ─── */
+function showStatus(msg, type) {
+  status.textContent = msg;
+  status.className = type;
+}
+
+/* ─── Verify Address ─── */
+verifyBtn.addEventListener('click', async () => {
+  const addr = document.getElementById('address').value.trim();
+  if (!addr) { showStatus('Please enter an address first.', 'error'); return; }
+  if (selectedFiles.length === 0) { showStatus('Please upload at least one photo first.', 'error'); return; }
+
+  if (photoConsistencyData && photoConsistencyData.same_property === false && !document.getElementById('overrideMismatch').checked) {
+    showStatus('Photo mismatch detected. Please confirm the override checkbox, or upload photos from the same property.', 'error');
+    document.getElementById('consistencyPanel').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  verifyBtn.disabled = true;
+  document.getElementById('verifyCard').classList.remove('hidden');
+  document.getElementById('verifyLoading').classList.remove('hidden');
+  document.getElementById('verifyResults').classList.add('hidden');
+  document.getElementById('verifyError').classList.add('hidden');
+  showStatus('', '');
+
+  try {
+    const res = await fetch('/api/verify-address', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({address: addr})
+    });
+    const data = await safeJson(res, 'Verify Address');
+
+    document.getElementById('verifyLoading').classList.add('hidden');
+
+    if (data.valid) {
+      verifiedAddress = data.location;
+      currentLocation = data.location;
+      currentAddress = data.location.display_name;
+      currentSVLat = data.location.lat;
+      currentSVLng = data.location.lng;
+
+      document.getElementById('verifyResults').classList.remove('hidden');
+      document.getElementById('verifyAddressText').textContent = data.location.display_name;
+
+      const pv = data.property_verification;
+      const resText = pv.is_likely_residential
+        ? `🏠 Likely Residential (${pv.building_type}) — Confidence: ${pv.confidence}`
+        : `⚠️ Not classified as residential (${pv.building_type}) — Please verify`;
+      document.getElementById('verifyPropertyType').textContent = resText;
+
+      if (!pv.is_likely_residential) {
+        document.getElementById('verifyBox').classList.add('warn');
+      } else {
+        document.getElementById('verifyBox').classList.remove('warn');
+      }
+
+      showVerifyMap(data.location.lat, data.location.lng);
+      showMiniSatellite(data.location.lat, data.location.lng);
+
+      // Street View: default to Mapillary
+      document.getElementById('streetViewFrame').src = 
+        `https://www.mapillary.com/embed?lat=${data.location.lat}&lng=${data.location.lng}&z=17&panos=true&navless=true`;
+      document.getElementById('verifyMapillaryLink').href = `https://www.mapillary.com/app/?lat=${data.location.lat}&lng=${data.location.lng}&z=17`;
+      document.getElementById('verifyGoogleSVLink').href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${data.location.lat},${data.location.lng}`;
+
+      const vpp = document.getElementById('verifyPhotoPreview');
+      vpp.innerHTML = '';
+      selectedFiles.forEach(file => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.style.width = '80px';
+        img.style.height = '80px';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '6px';
+        img.style.border = '1px solid #e2e8f0';
+        vpp.appendChild(img);
+      });
+
+      const cb = document.getElementById('affirmCheckbox');
+      cb.checked = false;
+      const proceedBtn = document.getElementById('proceedBtn');
+      proceedBtn.disabled = true;
+      proceedBtn.style.opacity = '0.5';
+      cb.onchange = (e) => {
+        proceedBtn.disabled = !e.target.checked;
+        proceedBtn.style.opacity = e.target.checked ? '1' : '0.5';
+      };
+
+      proceedBtn.onclick = () => {
+        document.getElementById('verifyCard').classList.add('hidden');
+        showStatus('Address verified. Analyzing property with Gemini AI...', 'info');
+        runAnalysis();
+      };
+
+    } else {
+      document.getElementById('verifyError').classList.remove('hidden');
+      document.getElementById('verifyErrorText').textContent = data.error || 'Address verification failed.';
+    }
+
+  } catch (e) {
+    document.getElementById('verifyLoading').classList.add('hidden');
+    document.getElementById('verifyError').classList.remove('hidden');
+    document.getElementById('verifyErrorText').textContent = 'Error: ' + e.message;
+  } finally {
+    verifyBtn.disabled = false;
+  }
+});
+
+function showVerifyMap(lat, lng) {
+  if (!verifyMap) {
+    verifyMap = L.map('verifyMap').setView([lat, lng], 18);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Esri', maxZoom: 19
+    }).addTo(verifyMap);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Esri', maxZoom: 19, opacity: 0.7
+    }).addTo(verifyMap);
+    verifyMarker = L.marker([lat, lng]).addTo(verifyMap);
+  } else {
+    verifyMap.setView([lat, lng], 18);
+    verifyMarker.setLatLng([lat, lng]);
+  }
+  verifyMarker.bindPopup('Geocoded Address').openPopup();
+  setTimeout(() => verifyMap.invalidateSize(), 300);
+}
+
+function showMiniSatellite(lat, lng) {
+  if (!miniSatMap) {
+    miniSatMap = L.map('miniSatellite').setView([lat, lng], 19);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Esri', maxZoom: 19
+    }).addTo(miniSatMap);
+    miniMarker = L.marker([lat, lng]).addTo(miniSatMap);
+  } else {
+    miniSatMap.setView([lat, lng], 19);
+    miniMarker.setLatLng([lat, lng]);
+  }
+  setTimeout(() => miniSatMap.invalidateSize(), 300);
+}
+
+/* ─── Photo Authenticity ─── */
+document.getElementById('checkPhotosBtn').addEventListener('click', async () => {
+  if (selectedFiles.length === 0) {
+    document.getElementById('photoAuthResults').innerHTML = '<span style="color:#dc2626;">Upload photos first.</span>';
+    return;
+  }
+  const btn = document.getElementById('checkPhotosBtn');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('images', f));
+
+  try {
+    const res = await fetch('/api/check-photos', {method:'POST', body:formData});
+    const data = await safeJson(res, 'Check Photos');
+
+    let html = `<div style="margin-bottom:8px; font-weight:600;">Analyzed ${data.photo_count} photo(s):</div>`;
+    data.authenticity_results.forEach(r => {
+      const cardClass = r.verdict_color === 'red' ? 'red' : (r.verdict_color === 'orange' ? 'orange' : 'green');
+      const warns = (r.warnings || []).map(w => `<div class="auth-warn">⚠️ ${escapeHtml(w)}</div>`).join('');
+      const poss = (r.positives || []).map(p => `<div class="auth-pos">✓ ${escapeHtml(p)}</div>`).join('');
+      html += `
+        <div class="auth-card ${cardClass}">
+          <div class="auth-title">${escapeHtml(r.filename)} — <span style="text-transform:uppercase;">${r.verdict}</span> (Score: ${r.suspicious_score})</div>
+          ${poss}
+          ${warns}
+        </div>
+      `;
+    });
+
+    if (data.summary && data.summary.has_gps) {
+      html += `<div class="auth-card green"><div class="auth-title">📡 GPS metadata found in photos!</div><div class="auth-pos">Photos contain GPS coordinates. The system will compare them to the provided address during analysis.</div></div>`;
+    } else {
+      html += `<div class="auth-card orange"><div class="auth-title">📡 No GPS metadata found</div><div class="auth-warn">These photos contain no location data. The system cannot verify they were taken at the provided address. This is normal for photos shared via messaging apps or social media.</div></div>`;
+    }
+
+    document.getElementById('photoAuthResults').innerHTML = html;
+  } catch (e) {
+    document.getElementById('photoAuthResults').innerHTML = '<span style="color:#dc2626;">Error: ' + escapeHtml(e.message) + '</span>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Analyze Photo Authenticity';
+  }
+});
+
+/* ─── Analyze Property ─── */
+async function runAnalysis() {
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('images', f));
+  formData.append('address', document.getElementById('address').value);
+
+  try {
+    const response = await fetch('/api/inspect', { method: 'POST', body: formData });
+    const data = await safeJson(response, 'Inspect Property');
+    if (data.error) { showStatus('Error: ' + data.error, 'error'); return; }
+    renderResults(data);
+    showStatus('Analysis complete. Please review all answers below.', 'success');
+  } catch (err) {
+    showStatus('Error: ' + err.message, 'error');
+  }
+}
+
+function renderResults(data) {
+  document.getElementById('resultsCard').classList.remove('hidden');
+
+  if (data.location) {
+    currentLocation = data.location;
+    currentAddress = data.location.display_name;
+    showMap(data.location.lat, data.location.lng, data.location.display_name);
+    document.getElementById('locationText').textContent = `📍 ${data.location.display_name} (${data.area_type || 'Unknown'})`;
+    document.getElementById('mapWrap').style.display = 'block';
+  } else {
+    document.getElementById('mapWrap').style.display = 'none';
+  }
+
+  document.getElementById('scoreBadge').textContent = data.score + '/100';
+  document.getElementById('ratingText').textContent = `${data.rating} · ${data.area_type || 'Unknown'}`;
+
+  document.querySelectorAll('.dynamic-gps-disclaimer').forEach(el => el.remove());
+
+  if (data.photo_authenticity) {
+    const pa = data.photo_authenticity;
+    const gpsDiv = document.createElement('div');
+    gpsDiv.className = 'disclaimer dynamic-gps-disclaimer';
+    gpsDiv.style.marginBottom = '20px';
+    if (pa.gps_match && pa.gps_match.checked) {
+      if (pa.gps_match.mismatch) {
+        gpsDiv.innerHTML = `⚠️ <strong>GPS Mismatch Detected:</strong> Photo GPS is ${pa.gps_match.distance_m}m from the provided address. Please verify this is correct.`;
+        gpsDiv.style.background = '#fef2f2';
+        gpsDiv.style.borderColor = '#fca5a5';
+      } else {
+        gpsDiv.innerHTML = `✅ <strong>GPS Verified:</strong> Photo GPS matches the provided address (within ${pa.gps_match.distance_m}m).`;
+        gpsDiv.style.background = '#f0fdf4';
+        gpsDiv.style.borderColor = '#86efac';
+      }
+    } else {
+      gpsDiv.innerHTML = `ℹ️ <strong>No GPS Metadata:</strong> These photos contain no embedded location data. The system cannot verify they were taken at this address. This is expected for photos from messaging apps.`;
+    }
+    const ref = document.getElementById('resultsCard').children[1];
+    document.getElementById('resultsCard').insertBefore(gpsDiv, ref);
+  }
+
+  const geminiPanel = document.getElementById('geminiPanel');
+  const geminiBadge = document.getElementById('geminiBadge');
+  if (data.gemini_analysis && data.gemini_analysis.available) {
+    geminiPanel.classList.remove('hidden');
+    geminiBadge.textContent = 'Active';
+    geminiBadge.className = 'gemini-badge ok';
+    document.getElementById('geminiReasoning').textContent = data.gemini_analysis.reasoning || 'Gemini analyzed the property photos successfully.';
+  } else {
+    geminiPanel.classList.remove('hidden');
+    geminiBadge.textContent = 'Inactive';
+    geminiBadge.className = 'gemini-badge fail';
+    document.getElementById('geminiReasoning').textContent = (data.gemini_analysis && data.gemini_analysis.error) ? 'Gemini error: ' + data.gemini_analysis.error : 'Gemini AI was not available for this analysis. Answers use fallback heuristics.';
+  }
+
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById(`section${i}Body`).innerHTML = '';
+  }
+  currentAnswers = {};
+
+  Object.entries(data.answers).forEach(([key, ans]) => {
+    const section = SECTION_MAP[key] || 3;
+    const confPct = Math.round((ans.confidence || 0) * 100);
+    const isLow = confPct < 70;
+    const originalValue = ans.value;
+    currentAnswers[key] = { ...ans, original_value: originalValue };
+
+    const tbody = document.getElementById(`section${section}Body`);
+    const tr = document.createElement('tr');
+    if (isLow) tr.classList.add('low-confidence');
+
+    const noteHtml = ans.note ? `<div class="note">${escapeHtml(ans.note)}</div>` : '';
+    const label = QUESTION_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    let inputHtml = '';
+    if (key === 'property_condition') {
+      inputHtml = `<select class="review-select" data-key="${key}">
+        <option value="Excellent" ${ans.value==='Excellent'?'selected':''}>Excellent</option>
+        <option value="Above Average" ${ans.value==='Above Average'?'selected':''}>Above Average</option>
+        <option value="Average" ${ans.value==='Average'?'selected':''}>Average</option>
+        <option value="Fair" ${ans.value==='Fair'?'selected':''}>Fair</option>
+        <option value="Poor" ${ans.value==='Poor'?'selected':''}>Poor</option>
+      </select>`;
+    } else if (key === 'location_type') {
+      inputHtml = `<select class="review-select" data-key="${key}">
+        <option value="Urban" ${ans.value==='Urban'?'selected':''}>Urban</option>
+        <option value="Suburban" ${ans.value==='Suburban'?'selected':''}>Suburban</option>
+        <option value="Rural" ${ans.value==='Rural'?'selected':''}>Rural</option>
+      </select>`;
+    } else if (key === 'property_use') {
+      inputHtml = `<select class="review-select" data-key="${key}">
+        <option value="Single Family - 1 Unit" ${ans.value==='Single Family - 1 Unit'?'selected':''}>Single Family - 1 Unit</option>
+        <option value="Multi-Unit" ${ans.value==='Multi-Unit'?'selected':''}>Multi-Unit</option>
+        <option value="Condo" ${ans.value==='Condo'?'selected':''}>Condo</option>
+        <option value="Townhome/Row House" ${ans.value==='Townhome/Row House'?'selected':''}>Townhome/Row House</option>
+        <option value="Modular" ${ans.value==='Modular'?'selected':''}>Modular</option>
+        <option value="Mobile/Manufactured Home" ${ans.value==='Mobile/Manufactured Home'?'selected':''}>Mobile/Manufactured Home</option>
+        <option value="Vacant Lot" ${ans.value==='Vacant Lot'?'selected':''}>Vacant Lot</option>
+        <option value="Other" ${ans.value==='Other'?'selected':''}>Other</option>
+      </select>`;
+    } else if (key === 'general_comments') {
+      inputHtml = `<textarea class="review-textarea" data-key="${key}">${escapeHtml(ans.value)}</textarea>`;
+    } else {
+      inputHtml = `<select class="review-select" data-key="${key}">
+        <option value="Yes" ${ans.value==='Yes'?'selected':''}>Yes</option>
+        <option value="No" ${ans.value==='No'?'selected':''}>No</option>
+        <option value="Unknown" ${ans.value==='Unknown'?'selected':''}>Unknown</option>
+        <option value="N/A" ${ans.value==='N/A'?'selected':''}>N/A</option>
+      </select>`;
+    }
+
+    tr.innerHTML = `
+      <td><strong>${label}</strong>${noteHtml}</td>
+      <td><span class="badge ${ans.value === 'Yes' ? 'badge-yes' : (ans.value === 'No' ? 'badge-no' : 'badge-unknown')}">${ans.value}</span></td>
+      <td><span class="confidence">${confPct}%</span></td>
+      <td><span class="source">${escapeHtml(ans.source)}</span></td>
+      <td>${inputHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const objDiv = document.getElementById('objectsArea');
+  if (data.objects_detected && data.objects_detected.length) {
+    objDiv.innerHTML = data.objects_detected.map(o =>
+      `<span class="obj-chip">${escapeHtml(o.tag)} <span style="color:#64748b">${o.confidence}%</span></span>`
+    ).join('');
+  } else {
+    objDiv.innerHTML = '<em>No objects detected. Try uploading clearer photos, or add Imagga API keys for better detection.</em>';
+  }
+
+  const placesDiv = document.getElementById('placesArea');
+  placesDiv.innerHTML = '';
+  const labels = {
+    highway: 'Highway / Major Road', railroad: 'Railroad / Train Station', airport: 'Airport',
+    golf_course: 'Golf Course', waterfront: 'Waterfront / Lake', park: 'Park',
+    industrial: 'Industrial Area', gated: 'Gated Community (hint)', landfill: 'Landfill / Waste',
+    commercial: 'Commercial Area', resort: 'Resort', mountain: 'Mountain / Peak',
+    vacant_building: 'Vacant Building', power_lines: 'Power Lines',
+  };
+  if (data.nearby_places && Object.keys(data.nearby_places).length) {
+    Object.entries(data.nearby_places).forEach(([k, v]) => {
+      const label = labels[k] || k;
+      const dist = v.min_dist ? `${(v.min_dist/1000).toFixed(1)}km` : null;
+      const val = v.count > 0
+        ? `<span style="color:var(--success)">✓ Yes${dist ? ' ('+dist+')' : ''}</span>`
+        : `<span style="color:var(--danger)">✗ No</span>`;
+      placesDiv.innerHTML += `<div class="place-item"><span class="place-name">${label}</span><span class="place-val">${val}</span></div>`;
+    });
+  } else {
+    placesDiv.innerHTML = '<div class="place-item"><span class="place-name">No location data</span></div>';
+  }
+
+  document.querySelectorAll('.dynamic-api-error').forEach(el => el.remove());
+  if (data.api_errors && data.api_errors.length) {
+    const errDiv = document.createElement('div');
+    errDiv.className = 'disclaimer dynamic-api-error';
+    errDiv.innerHTML = '<strong>API Notes:</strong> ' + escapeHtml(data.api_errors.join(' | '));
+    document.getElementById('resultsCard').insertBefore(errDiv, document.getElementById('resultsCard').firstChild.nextSibling);
+  }
+
+  document.getElementById('resultsCard').scrollIntoView({behavior:'smooth'});
+}
+
+function showMap(lat, lng, name) {
+  if (!map) {
+    map = L.map('map').setView([lat, lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    marker = L.marker([lat, lng]).addTo(map);
+  } else {
+    map.setView([lat, lng], 14);
+    marker.setLatLng([lat, lng]);
+  }
+  marker.bindPopup(name).openPopup();
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+/* ─── Generate Report ─── */
+document.getElementById('generateReportBtn').addEventListener('click', async () => {
+  document.querySelectorAll('.review-select').forEach(sel => {
+    const key = sel.dataset.key;
+    if (currentAnswers[key]) {
+      currentAnswers[key].value = sel.value;
+    }
+  });
+  document.querySelectorAll('.review-textarea').forEach(ta => {
+    const key = ta.dataset.key;
+    if (currentAnswers[key]) {
+      currentAnswers[key].value = ta.value;
+    }
+  });
+
+  const reportBtn = document.getElementById('generateReportBtn');
+  reportBtn.disabled = true;
+  reportBtn.textContent = 'Generating...';
+
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        address: currentAddress,
+        location: currentLocation,
+        answers: currentAnswers,
+        reviewed_by: 'Property Inspector'
+      })
+    });
+    const report = await safeJson(res, 'Generate Report');
+    renderReport(report);
+  } catch (e) {
+    alert('Report generation failed: ' + e.message);
+  } finally {
+    reportBtn.disabled = false;
+    reportBtn.textContent = '📄 Generate Final Report';
+  }
+});
+
+function renderReport(report) {
+  const out = document.getElementById('reportOutput');
+  out.classList.remove('hidden');
+
+  const findings = report.findings.map(f => `
+    <tr>
+      <td>${escapeHtml(f.question)}</td>
+      <td>${escapeHtml(f.ai_answer)}</td>
+      <td><strong>${escapeHtml(f.final_answer)}</strong></td>
+      <td>${f.verified ? '✅ Confirmed' : '✏️ Edited'}</td>
+    </tr>
+  `).join('');
+
+  out.innerHTML = `
+    <h3 style="margin-top:0">📄 Inspection Report #${escapeHtml(report.report_id)}</h3>
+    <p><strong>Property:</strong> ${escapeHtml(report.property_address)}</p>
+    <p><strong>Reviewed By:</strong> ${escapeHtml(report.reviewed_by)}</p>
+    <p><strong>Generated:</strong> ${new Date(report.generated_at).toLocaleString()}</p>
+    <table class="inspection-table" style="margin-top:12px">
+      <thead><tr><th>Question</th><th>AI Answer</th><th>Final Answer</th><th>Status</th></tr></thead>
+      <tbody>${findings}</tbody>
+    </table>
+    <p style="margin-top:16px; font-size:12px; color:#64748b;">${escapeHtml(report.disclaimer)}</p>
+    <button onclick="window.print()" class="btn-secondary" style="margin-top:12px">🖨️ Print / Save as PDF</button>
+  `;
+  out.scrollIntoView({behavior:'smooth'});
+}
+
+/* ─── Utilities ─── */
+function debounce(fn, ms) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+</body>
+</html>
